@@ -1,4 +1,4 @@
-name: Build Kernel Ginkgo OC KSU
+name: Build Kernel Shadow Ginkgo
 
 on:
   workflow_dispatch:
@@ -15,18 +15,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y bc bison build-essential flex gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi git libssl-dev libncurses5-dev python3 zip curl
 
-      - name: Download Clang (Proton)
+      - name: Download Clang
         run: |
           mkdir clang
-          cd clang
           curl -LO https://github.com/kdrag0n/proton-clang/archive/refs/heads/master.tar.gz
-          tar -xf master.tar.gz --strip-components=1
+          tar -xf master.tar.gz -C clang --strip-components=1
 
-      - name: Download Kernel Source
+      - name: Download Kernel Source (GitLab)
         run: |
-          # Menggunakan config git untuk menghindari prompt username
-          git config --global url."https://github.com/".insteadOf git@github.com:
-          git clone --depth=1 https://github.com/NetherKernel/android_kernel_xiaomi_ginkgo.git -b 10 kernel-src
+          # Mengambil dari GitLab agar tidak ada drama Username GitHub
+          git clone --depth=1 https://gitlab.com/stryp/kernel_xiaomi_ginkgo.git -b ten kernel-src
 
       - name: Setup KernelSU
         run: |
@@ -38,28 +36,18 @@ jobs:
           export PATH=$(pwd)/clang/bin:$PATH
           cd kernel-src
           make O=out ARCH=arm64 ginkgo_defconfig
-          make -j$(nproc --all) O=out \
-                      ARCH=arm64 \
-                      CC=clang \
-                      AR=llvm-ar \
-                      NM=llvm-nm \
-                      OBJCOPY=llvm-objcopy \
-                      OBJDUMP=llvm-objdump \
-                      STRIP=llvm-strip \
-                      CLANG_TRIPLE=aarch64-linux-gnu- \
-                      CROSS_COMPILE=aarch64-linux-gnu- \
-                      CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+          make -j$(nproc --all) O=out ARCH=arm64 CC=clang CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-gnu- CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
       - name: Packing
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
           find kernel-src/out/arch/arm64/boot/ -name "Image*" -exec cp {} AnyKernel3/ \;
           cd AnyKernel3
-          zip -r9 ../Kernel-Ginkgo-Shadow.zip * -x .git README.md
+          zip -r9 ../Kernel-Shadow-Ginkgo.zip * -x .git README.md
 
-      - name: Upload Artifact
+      - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: Kernel-Shadow-Result
-          path: Kernel-Ginkgo-Shadow.zip
+          name: Kernel-Shadow-Final
+          path: Kernel-Shadow-Ginkgo.zip
           
