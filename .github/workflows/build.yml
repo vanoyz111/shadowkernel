@@ -1,0 +1,59 @@
+name: Build Kernel Ginkgo OC KSU
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bc bison build-essential flex gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi git libssl-dev libncurses5-dev python3 zip curl
+
+      - name: Download Clang
+        run: |
+          mkdir clang
+          cd clang
+          curl -LO https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/refs/heads/master/clang-r487747c.tar.gz
+          tar -xf clang-r487747c.tar.gz
+
+      - name: Download Kernel Source
+        run: |
+          git clone --depth=1 https://github.com/Strix-Project/android_kernel_xiaomi_ginkgo -b ten kernel-src
+
+      - name: Setup KernelSU
+        run: |
+          cd kernel-src
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s main
+
+      - name: Build Kernel
+        run: |
+          export PATH=$(pwd)/clang/bin:$PATH
+          cd kernel-src
+          make O=out ARCH=arm64 ginkgo_defconfig
+          # Instruksi Overclock biasanya sudah ada di defconfig source ini
+          make -j$(nproc --all) O=out \
+                      ARCH=arm64 \
+                      CC=clang \
+                      CLANG_TRIPLE=aarch64-linux-gnu- \
+                      CROSS_COMPILE=aarch64-linux-gnu- \
+                      CROSS_COMPILE_ARM32=arm-linux-gnueabi-
+
+      - name: Packing
+        run: |
+          git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
+          cp kernel-src/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
+          cd AnyKernel3
+          zip -r9 ../Kernel-Ginkgo-KSU-OC.zip * -x .git README.md
+
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kernel-Shadow-KSU-OC
+          path: Kernel-Ginkgo-KSU-OC.zip
+          
