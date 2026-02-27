@@ -22,10 +22,10 @@ jobs:
           curl -LO https://github.com/kdrag0n/proton-clang/archive/refs/heads/master.tar.gz
           tar -xf master.tar.gz --strip-components=1
 
-      - name: Download Kernel Source (Resmi)
+      - name: Download Kernel Source (Force Public)
         run: |
-          # Pakai link Google Source agar tidak ada drama login GitHub
-          git clone --depth=1 https://android.googlesource.com/kernel/msm.git -b android-4.14-q-release kernel-src
+          # Menggunakan protokol git:// untuk membypass proteksi username GitHub
+          git clone --depth=1 git://github.com/TomHygge/android_kernel_xiaomi_ginkgo.git -b ten kernel-src
 
       - name: Setup KernelSU
         run: |
@@ -54,11 +54,11 @@ jobs:
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
           find kernel-src/out/arch/arm64/boot/ -name "Image*" -exec cp {} AnyKernel3/ \;
           cd AnyKernel3
-          zip -r9 ../Kernel-Ginkgo-Shadow-Final.zip * -x .git README.md
+          zip -r9 ../Kernel-Shadow-Final.zip * -x .git README.md
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Kernel-Shadow-Final
-          path: Kernel-Ginkgo-Shadow-Final.zip
+          path: Kernel-Shadow-Final.zip
           
