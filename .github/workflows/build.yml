@@ -24,7 +24,7 @@ jobs:
 
       - name: Download Kernel Source
         run: |
-          git clone --depth=1 https://github.com/Strix-Project/android_kernel_xiaomi_ginkgo.git -b ten kernel-src
+          git clone --depth=1 https://github.com/Strix-Project/android_kernel_xiaomi_ginkgo -b ten kernel-src
 
       - name: Setup KernelSU
         run: |
@@ -51,11 +51,8 @@ jobs:
       - name: Packing
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
-          if [ -f kernel-src/out/arch/arm64/boot/Image.gz-dtb ]; then
-            cp kernel-src/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
-          elif [ -f kernel-src/out/arch/arm64/boot/Image ]; then
-            cp kernel-src/out/arch/arm64/boot/Image AnyKernel3/
-          fi
+          # Mencari file Image hasil build secara otomatis
+          find kernel-src/out/arch/arm64/boot/ -name "Image*" -exec cp {} AnyKernel3/ \;
           cd AnyKernel3
           zip -r9 ../Kernel-Ginkgo-Shadow-KSU.zip * -x .git README.md
 
