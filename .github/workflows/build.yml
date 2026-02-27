@@ -24,7 +24,8 @@ jobs:
 
       - name: Download Kernel Source
         run: |
-          git clone --depth=1 https://github.com/NetherKernel/android_kernel_xiaomi_ginkgo.git -b 10 kernel-src
+          # Menggunakan link yang 100% public dan bisa diakses bot
+          git clone --depth=1 https://github.com/TomHygge/android_kernel_xiaomi_ginkgo.git -b ten kernel-src
 
       - name: Setup KernelSU
         run: |
@@ -53,11 +54,11 @@ jobs:
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
           find kernel-src/out/arch/arm64/boot/ -name "Image*" -exec cp {} AnyKernel3/ \;
           cd AnyKernel3
-          zip -r9 ../Kernel-Ginkgo-Shadow-KSU.zip * -x .git README.md
+          zip -r9 ../Kernel-Ginkgo-Shadow-Final.zip * -x .git README.md
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Kernel-Shadow-RedmiNote8
-          path: Kernel-Ginkgo-Shadow-KSU.zip
+          name: Kernel-Shadow-Final
+          path: Kernel-Ginkgo-Shadow-Final.zip
           
