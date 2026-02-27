@@ -22,10 +22,10 @@ jobs:
           curl -LO https://github.com/kdrag0n/proton-clang/archive/refs/heads/master.tar.gz
           tar -xf master.tar.gz --strip-components=1
 
-      - name: Download Kernel Source
+      - name: Download Kernel Source (Resmi)
         run: |
-          # Menggunakan link yang 100% public dan bisa diakses bot
-          git clone --depth=1 https://github.com/TomHygge/android_kernel_xiaomi_ginkgo.git -b ten kernel-src
+          # Pakai link Google Source agar tidak ada drama login GitHub
+          git clone --depth=1 https://android.googlesource.com/kernel/msm.git -b android-4.14-q-release kernel-src
 
       - name: Setup KernelSU
         run: |
