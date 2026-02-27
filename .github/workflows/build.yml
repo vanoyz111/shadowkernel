@@ -24,7 +24,7 @@ jobs:
 
       - name: Download Kernel Source
         run: |
-          git clone --depth=1 https://github.com/Strix-Project/android_kernel_xiaomi_ginkgo -b ten kernel-src
+          git clone --depth=1 https://github.com/Strix-Project/android_kernel_xiaomi_ginkgo.git -b ten kernel-src
 
       - name: Setup KernelSU
         run: |
@@ -51,13 +51,17 @@ jobs:
       - name: Packing
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
-          cp kernel-src/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/ || cp kernel-src/out/arch/arm64/boot/Image AnyKernel3/
+          if [ -f kernel-src/out/arch/arm64/boot/Image.gz-dtb ]; then
+            cp kernel-src/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
+          elif [ -f kernel-src/out/arch/arm64/boot/Image ]; then
+            cp kernel-src/out/arch/arm64/boot/Image AnyKernel3/
+          fi
           cd AnyKernel3
-          zip -r9 ../Kernel-Ginkgo-KSU-OC.zip * -x .git README.md
+          zip -r9 ../Kernel-Ginkgo-Shadow-KSU.zip * -x .git README.md
 
-      - name: Upload
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Kernel-Shadow-KSU-OC
-          path: Kernel-Ginkgo-KSU-OC.zip
+          name: Kernel-Shadow-RedmiNote8
+          path: Kernel-Ginkgo-Shadow-KSU.zip
           
