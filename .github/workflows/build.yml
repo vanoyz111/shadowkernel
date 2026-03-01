@@ -5,81 +5,76 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Install Dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y bc bison build-essential curl flex git libssl-dev make zip python3 wget libelf-dev
 
-    - name: Install Dependencies
-      run: |
-        sudo apt update
+      - name: Clone Kernel Source
+        run: |
+          # PENTING: Ganti URL di bawah dengan link GitHub kernel source Ginkgo milikmu/developer lain
+          # Contoh: git clone --depth=1 https://github.com/NamaDev/android_kernel_xiaomi_ginkgo.git -b ten kernel-source
+          git clone --depth=1 <git clone --depth=1 https://github.com/kutemeikito/android_kernel_xiaomi_ginkgo.git -b sixteen kernel-source
+          > -b <kingo> kernel-source
 
-        sudo apt install -y \
-        bc bison build-essential curl flex git \
-        libssl-dev make zip python3 wget \
-        libelf-dev
+      - name: Download Clang
+        run: |
+          git clone --depth=1 https://github.com/kdrag0n/proton-clang clang
 
-    - name: Download Clang
-      run: |
-        git clone --depth=1 https://github.com/kdrag0n/proton-clang clang
+      - name: Install KernelSU
+        run: |
+          cd kernel-source
+          curl -LSs https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh | bash -
 
-    - name: Install KernelSU
-      run: |
-        curl -LSs https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh | bash -
+      - name: Enable KernelSU + Performance
+        run: |
+          cd kernel-source
+          echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/ginkgo-perf_defconfig
+          echo "CONFIG_LTO_CLANG=y" >> arch/arm64/configs/vendor/ginkgo-perf_defconfig
+          echo "CONFIG_THINLTO=y" >> arch/arm64/configs/vendor/ginkgo-perf_defconfig
+          echo "CONFIG_CPU_FREQ_GOV_PERFORMANCE=y" >> arch/arm64/configs/vendor/ginkgo-perf_defconfig
+          echo "CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y" >> arch/arm64/configs/vendor/ginkgo-perf_defconfig
 
-    - name: Enable KernelSU + Performance
-      run: |
+      - name: Build Kernel
+        run: |
+          cd kernel-source
+          # Menggunakan GITHUB_WORKSPACE agar path clang tidak error saat kita berada di dalam folder kernel-source
+          export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
+          export ARCH=arm64
+          export SUBARCH=arm64
+          export CC=clang
+          export CLANG_TRIPLE=aarch64-linux-gnu-
+          export CROSS_COMPILE=aarch64-linux-android-
+          export CROSS_COMPILE_ARM32=arm-linux-androideabi-
 
-        echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/ginkgo-perf_defconfig
-        echo "CONFIG_LTO_CLANG=y" >> arch/arm64/configs/vendor/ginkgo-perf_defconfig
-        echo "CONFIG_THINLTO=y" >> arch/arm64/configs/vendor/ginkgo-perf_defconfig
+          make O=out vendor/ginkgo-perf_defconfig
 
-        echo "CONFIG_CPU_FREQ_GOV_PERFORMANCE=y" >> arch/arm64/configs/vendor/ginkgo-perf_defconfig
-        echo "CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y" >> arch/arm64/configs/vendor/ginkgo-perf_defconfig
+          # Menggunakan nproc --all agar build lebih cepat
+          make -j$(nproc --all) O=out \
+            CC=clang \
+            CROSS_COMPILE=aarch64-linux-android-
 
-    - name: Build Kernel
+      - name: Make Flashable Zip
+        run: |
+          git clone https://github.com/osm0sis/AnyKernel3
+          
+          # Mengambil Image.gz-dtb dari dalam folder kernel-source
+          cp kernel-source/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
+          
+          cd AnyKernel3
+          sed -i 's/device.name1=.*/device.name1=ginkgo/' anykernel.sh
+          sed -i 's/device.name2=.*/device.name2=willow/' anykernel.sh
+          
+          zip -r9 ../Kernel-Ginkgo-PRO-KSU.zip *
 
-      run: |
-
-        export ARCH=arm64
-        export SUBARCH=arm64
-
-        export PATH=$PWD/clang/bin:$PATH
-
-        export CC=clang
-        export CLANG_TRIPLE=aarch64-linux-gnu-
-        export CROSS_COMPILE=aarch64-linux-android-
-        export CROSS_COMPILE_ARM32=arm-linux-androideabi-
-
-        make O=out vendor/ginkgo-perf_defconfig
-
-        make -j8 O=out \
-        CC=clang \
-        CROSS_COMPILE=aarch64-linux-android-
-
-    - name: Make Flashable Zip
-      run: |
-
-        git clone https://github.com/osm0sis/AnyKernel3
-
-        cp out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
-
-        cd AnyKernel3
-
-        sed -i 's/device.name1=.*/device.name1=ginkgo/' anykernel.sh
-        sed -i 's/device.name2=.*/device.name2=ginkgo/' anykernel.sh
-
-        zip -r9 Kernel-Ginkgo-PRO-KSU.zip *
-
-    - name: Upload Kernel
-
-      uses: actions/upload-artifact@v4
-
-      with:
-        name: Ginkgo-Kernel
-
-        path: AnyKernel3/Kernel-Ginkgo-PRO-KSU.zip
-        
+      - name: Upload Kernel
+        uses: actions/upload-artifact@v4
+        with:
+          name: Ginkgo-Kernel
+          path: Kernel-Ginkgo-PRO-KSU.zip
+          
