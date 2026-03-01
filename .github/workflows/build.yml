@@ -13,15 +13,15 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt update
-          sudo apt install -y bc bison build-essential curl flex git libssl-dev make zip python3 wget libelf-dev libarchive-tools
+          sudo apt install -y bc bison build-essential curl flex git libssl-dev make zip python3 wget libelf-dev libarchive-tools lld llvm
 
       - name: Clone Kernel Source
         run: |
           git clone --depth=1 https://github.com/kutemeikito/android_kernel_xiaomi_ginkgo.git -b sixteen kernel-source
 
-      - name: Download Clang
+      - name: Download Toolchain (Proton Clang)
         run: |
-          git clone --depth=1 https://github.com/kdrag0n/proton-clang clang
+          git clone --depth=1 https://github.com/kdrag0n/proton-clang.git clang-llvm
 
       - name: Install KernelSU
         run: |
@@ -31,7 +31,7 @@ jobs:
       - name: Enable KernelSU + Performance
         run: |
           cd kernel-source
-          # Menggunakan ginkgo_defconfig (Ryzen/sixteen branch)
+          # Menggunakan ginkgo_defconfig sesuai source Ryzen
           echo "CONFIG_KSU=y" >> arch/arm64/configs/vendor/ginkgo_defconfig
           echo "CONFIG_CPU_FREQ_GOV_PERFORMANCE=y" >> arch/arm64/configs/vendor/ginkgo_defconfig
           echo "CONFIG_CPU_FREQ_DEFAULT_GOV_PERFORMANCE=y" >> arch/arm64/configs/vendor/ginkgo_defconfig
@@ -39,42 +39,45 @@ jobs:
       - name: Build Kernel
         run: |
           cd kernel-source
-          export PATH=$GITHUB_WORKSPACE/clang/bin:$PATH
+          # Memperbaiki PATH agar sistem benar-benar menemukan Clang
+          export PATH=$GITHUB_WORKSPACE/clang-llvm/bin:$PATH
+          
           export ARCH=arm64
           export SUBARCH=arm64
-          export CC=clang
-          export CLANG_TRIPLE=aarch64-linux-gnu-
-          export CROSS_COMPILE=aarch64-linux-android-
-          export CROSS_COMPILE_ARM32=arm-linux-androideabi-
-
-          # Step 1: Membuat file konfigurasi
+          export KBUILD_COMPILER_STRING="$(../clang-llvm/bin/clang --version | head -n 1)"
+          
+          # Membuat konfigurasi
           make O=out vendor/ginkgo_defconfig
 
-          # Step 2: Proses Kompilasi
+          # Proses Kompilasi dengan Linker LLD (Mengatasi error .relr.dyn di foto)
           make -j$(nproc --all) O=out \
             CC=clang \
-            CLANG_TRIPLE=aarch64-linux-gnu- \
-            CROSS_COMPILE=aarch64-linux-android- \
-            CROSS_COMPILE_ARM32=arm-linux-androideabi-
+            AR=llvm-ar \
+            NM=llvm-nm \
+            OBJCOPY=llvm-objcopy \
+            OBJDUMP=llvm-objdump \
+            STRIP=llvm-strip \
+            LD=ld.lld \
+            CROSS_COMPILE=aarch64-linux-gnu- \
+            CROSS_COMPILE_ARM32=arm-linux-gnueabi-
 
       - name: Make Flashable Zip
         run: |
           git clone --depth=1 https://github.com/osm0sis/AnyKernel3 AnyKernel3
           
-          # Memindahkan hasil compile (Image.gz-dtb) ke AnyKernel
+          # Cek hasil build dan masukkan ke AnyKernel
           if [ -f kernel-source/out/arch/arm64/boot/Image.gz-dtb ]; then
             cp kernel-source/out/arch/arm64/boot/Image.gz-dtb AnyKernel3/
           elif [ -f kernel-source/out/arch/arm64/boot/Image ]; then
             cp kernel-source/out/arch/arm64/boot/Image AnyKernel3/
+          else
+            echo "Kernel tidak ditemukan! Build gagal."
+            exit 1
           fi
           
           cd AnyKernel3
-          # Setup info device
           sed -i 's/device.name1=.*/device.name1=ginkgo/' anykernel.sh
           sed -i 's/device.name2=.*/device.name2=willow/' anykernel.sh
-          sed -i 's/device.name3=.*/device.name3=/' anykernel.sh
-          
-          # Membuat file ZIP
           zip -r9 ../Kernel-Ginkgo-PRO-KSU.zip *
 
       - name: Upload Kernel
